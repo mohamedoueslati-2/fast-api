@@ -2,11 +2,12 @@ import json
 
 from fastapi.testclient import TestClient
 
-from app import api as main
+from app.core import storage
+from app.main import app
 
 
 def test_video_and_clip_management(tmp_path, monkeypatch):
-    monkeypatch.setattr(main, "STORAGE", tmp_path)
+    monkeypatch.setattr(storage, "ROOT", tmp_path)
     video_id = "a" * 32
     clip_id = "b" * 32
     batch_id = "c" * 32
@@ -27,7 +28,7 @@ def test_video_and_clip_management(tmp_path, monkeypatch):
     }
     metadata_path = tmp_path / f"{batch_id}_clips.json"
     metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
-    with TestClient(main.app) as client:
+    with TestClient(app) as client:
         assert client.get("/videos").json() == {
             "videos": [{"video_id": video_id, "filename": f"{video_id}.mp4"}]
         }

@@ -20,25 +20,41 @@ Ouvre [l’interface](http://127.0.0.1:8002/) ou [la documentation interactive](
 ## Architecture
 
 ```text
-Navigateur : interface HTML / JavaScript
-                 |
-                 | HTTP
-                 v
-FastAPI : routes et validation Pydantic
-                 |
-                 +----> FFprobe : durée des vidéos
-                 +----> FFmpeg : extraits, audio, images
-                 |
-                 v
-storage/ : vidéos, extraits, audio, captures et métadonnées JSON
+Interface HTML / JavaScript
+           | HTTP
+           v
+routers/   Requêtes, statuts HTTP et réponses fichiers
+           |
+           v
+services/  Règles métier et opérations par domaine
+           |                    |
+           v                    v
+core/storage.py          services/media.py
+Fichiers et JSON          FFmpeg / FFprobe
 ```
 
 ```text
 app/
-  main.py       Point d’entrée ASGI
-  api.py        Routes et traitement des médias
-  schemas.py    Modèles des requêtes
-  index.html    Interface locale
+  main.py          Assemble FastAPI, les routes et la gestion des erreurs
+  schemas.py       Modèles Pydantic des requêtes
+  routers/
+    system.py      Accueil et health check
+    videos.py      Envoi, liste, lecture et suppression des vidéos
+    clips.py       Création, liste et suppression des extraits
+    audio.py       Extraction MP3 / WAV
+    frames.py      Extraction, lecture et suppression des captures
+    files.py       Accès aux fichiers locaux
+  services/
+    videos.py      Logique des vidéos
+    clips.py       Validation des temps et découpage
+    audio.py       Conversion audio
+    frames.py      Détection de scènes et gestion des captures
+    files.py       Validation des fichiers demandés
+    media.py       Exécution des commandes FFmpeg / FFprobe
+  core/
+    storage.py     Configuration du stockage et recherche de fichiers
+    errors.py      Erreurs des services traduites en HTTP par main.py
+  index.html       Interface locale
 requirements.txt       Dépendances de l’application
 requirements-dev.txt   Outils de développement et de test
 tests/                 Tests automatisés
@@ -46,6 +62,10 @@ storage/               Fichiers locaux, ignorés par Git
 ```
 
 Il n’y a pas de base de données : les MP4, MP3, WAV, images et métadonnées sont stockés localement. Les noms générés utilisent des identifiants uniques. Le contrôle à l’envoi vérifie l’extension, pas le contenu réel de la vidéo.
+
+Les routes transmettent les opérations aux services. Les services appliquent les règles métier et utilisent le stockage commun ; ils ne créent pas de réponses HTTP. Le gestionnaire d’erreurs de `main.py` traduit leurs erreurs en réponses JSON.
+
+Le dossier `storage/` est ancré à la racine du projet, indépendamment du répertoire courant. La variable d’environnement `VIDEO_STORAGE_DIR` permet de le remplacer. Swagger regroupe les endpoints par domaine.
 
 ## API
 

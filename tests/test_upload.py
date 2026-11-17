@@ -1,11 +1,12 @@
 from fastapi.testclient import TestClient
 
-from app import api as main
+from app.core import storage
+from app.main import app
 
 
 def test_upload_video(tmp_path, monkeypatch):
-    monkeypatch.setattr(main, "STORAGE", tmp_path)
-    with TestClient(main.app) as client:
+    monkeypatch.setattr(storage, "ROOT", tmp_path)
+    with TestClient(app) as client:
         response = client.post(
             "/videos", files={"file": ("video.MP4", b"video content", "video/mp4")}
         )
@@ -17,8 +18,8 @@ def test_upload_video(tmp_path, monkeypatch):
 
 
 def test_upload_rejects_other_extensions(tmp_path, monkeypatch):
-    monkeypatch.setattr(main, "STORAGE", tmp_path)
-    with TestClient(main.app) as client:
+    monkeypatch.setattr(storage, "ROOT", tmp_path)
+    with TestClient(app) as client:
         response = client.post("/videos", files={"file": ("video.txt", b"content")})
 
     assert response.status_code == 400

@@ -4,12 +4,13 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from app import api as main
+from app.core import storage
+from app.main import app
 
 
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="FFmpeg is required")
 def test_scene_frames(tmp_path, monkeypatch):
-    monkeypatch.setattr(main, "STORAGE", tmp_path)
+    monkeypatch.setattr(storage, "ROOT", tmp_path)
     video_id = "a" * 32
     subprocess.run(
         [
@@ -32,7 +33,7 @@ def test_scene_frames(tmp_path, monkeypatch):
         ],
         check=True,
     )
-    with TestClient(main.app) as client:
+    with TestClient(app) as client:
         response = client.post(f"/videos/{video_id}/frames")
         assert response.status_code == 201
         batch = response.json()

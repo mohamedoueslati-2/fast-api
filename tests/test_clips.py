@@ -5,14 +5,17 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from app import api as main
+from app.core import storage
+from app.core.errors import AppError
+from app.main import app
+from app.services.clips import to_seconds
 
 
 def test_time_conversion():
-    assert main.to_seconds("05:30") == 330
-    assert main.to_seconds("01:20:00") == 4800
-    with pytest.raises(main.HTTPException):
-        main.to_seconds("01:60")
+    assert to_seconds("05:30") == 330
+    assert to_seconds("01:20:00") == 4800
+    with pytest.raises(AppError):
+        to_seconds("01:60")
 
 
 @pytest.mark.skipif(
@@ -20,7 +23,7 @@ def test_time_conversion():
     reason="FFmpeg and FFprobe are required",
 )
 def test_clips_and_metadata(tmp_path, monkeypatch):
-    monkeypatch.setattr(main, "STORAGE", tmp_path)
+    monkeypatch.setattr(storage, "ROOT", tmp_path)
     video_id = "a" * 32
     video = tmp_path / f"{video_id}.mp4"
     subprocess.run(
@@ -38,7 +41,7 @@ def test_clips_and_metadata(tmp_path, monkeypatch):
         ],
         check=True,
     )
-    with TestClient(main.app) as client:
+    with TestClient(app) as client:
         invalid = client.post(
             f"/videos/{video_id}/clips",
             json={"clips": [{"start": "00:02", "end": "00:04"}]},

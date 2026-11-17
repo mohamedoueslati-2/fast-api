@@ -1,4 +1,4 @@
-"""Mod?les des requ?tes de l?API."""
+"""Pydantic request models shared by HTTP routes and services."""
 
 from typing import Literal
 
