@@ -1,8 +1,5 @@
-from fastapi import FastAPI
+"""Point d?entr?e ASGI de l?application."""
 
-app = FastAPI(title="FastAPI Backend", version="0.1.0")
+from app.api import app
 
-
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+__all__ = ["app"]

@@ -1,0 +1,326 @@
+﻿<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video Studio</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f6f8; color: #19212b; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 720px; margin: 56px auto; padding: 0 20px 40px; }
+    .eyebrow { color: #4565ce; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 6px 0; font-size: clamp(30px, 6vw, 42px); letter-spacing: -.04em; }
+    .intro, .hint { color: #697584; }
+    .card { background: white; border: 1px solid #e3e7ed; border-radius: 16px; padding: 24px; margin-top: 20px; box-shadow: 0 8px 30px #17233a08; }
+    h2 { margin: 0 0 6px; font-size: 19px; }
+    .hint { margin: 0 0 18px; font-size: 14px; }
+    label { display: block; font-size: 13px; font-weight: 650; margin-bottom: 6px; }
+    input { font: inherit; width: 100%; border: 1px solid #cdd5e0; border-radius: 8px; padding: 10px; background: white; }
+    input[type=file] { padding: 9px; }
+    button { font: inherit; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; font-weight: 650; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .primary { background: #365bd4; color: white; margin-top: 16px; }
+    .secondary { background: #edf1fb; color: #3653a8; }
+    .remove { background: #f5f6f8; color: #596777; align-self: end; }
+    .row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; margin-bottom: 12px; align-items: end; }
+    .result { white-space: pre-wrap; overflow-wrap: anywhere; background: #f5f7fb; border-radius: 8px; padding: 12px; font-size: 13px; margin: 16px 0 0; }
+    .status { margin-top: 12px; font-size: 14px; color: #526276; }
+    .error { color: #b3261e; }
+    select { font: inherit; width: 100%; padding: 10px; border: 1px solid #cdd5e0; border-radius: 8px; background: white; }
+    video { display: block; width: 100%; max-height: 360px; background: #111; border-radius: 8px; margin: 14px 0; }
+    .clip { padding: 12px 0; border-top: 1px solid #e3e7ed; overflow-wrap: anywhere; }
+    .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+    .gallery img { display: block; width: 100%; border-radius: 8px; }
+    .frame-choice { margin: 0; font-weight: normal; }
+    .frame-choice input { width: auto; margin-right: 6px; }
+    .frame-choice a { display: block; margin-bottom: 6px; }
+    @media (max-width: 480px) { .row { grid-template-columns: 1fr 1fr; } .remove { grid-column: span 2; } main { margin-top: 28px; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">FastAPI · Outil local</div>
+  <h1>Video Studio</h1>
+  <p class="intro">Envoie une vidéo MP4 et crée tes extraits en quelques clics.</p>
+
+  <section class="card">
+    <h2>1. Choisir une vidéo</h2>
+    <p class="hint">Le fichier est enregistré dans le dossier storage du projet.</p>
+    <form id="upload-form">
+      <label for="video">Fichier MP4</label>
+      <input id="video" type="file" accept=".mp4,video/mp4" required>
+      <button class="primary" type="submit">Envoyer la vidéo</button>
+    </form>
+    <div id="upload-status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="card">
+    <h2>2. Vidéos enregistrées</h2>
+    <p class="hint">Sélectionne une vidéo pour la lire et gérer ses extraits.</p>
+    <label for="video-select">Vidéo</label>
+    <select id="video-select"><option value="">Choisir une vidéo</option></select>
+    <div id="library-status" class="status" role="status"></div>
+    <video id="preview" controls hidden></video>
+    <button id="delete-video" class="remove" type="button" hidden>Supprimer la vidéo et ses extraits</button>
+    <h3>Extraits</h3>
+    <div id="clips-list" class="hint">Sélectionne une vidéo.</div>
+  </section>
+
+  <section class="card">
+    <h2>3. Créer des extraits</h2>
+    <p class="hint">Indique les temps au format MM:SS ou HH:MM:SS.</p>
+    <form id="clips-form">
+      <div id="intervals"></div>
+      <button id="add" class="secondary" type="button">+ Ajouter un extrait</button><br>
+      <button id="create" class="primary" type="submit" disabled>Créer les extraits</button>
+    </form>
+    <div id="clips-status" class="status" role="status" aria-live="polite"></div>
+    <pre id="result" class="result" hidden></pre>
+  </section>
+  <section class="card">
+    <h2>4. Extraire l’audio</h2>
+    <p class="hint">Choisis la vidéo sélectionnée ou l’un de ses extraits.</p>
+    <form id="audio-form">
+      <label for="audio-source">Source</label>
+      <select id="audio-source" required><option value="">Sélectionne d’abord une vidéo</option></select>
+      <label for="audio-format">Format</label>
+      <select id="audio-format"><option value="mp3">MP3</option><option value="wav">WAV</option></select>
+      <button id="audio-submit" class="primary" type="submit" disabled>Extraire l’audio</button>
+    </form>
+    <div id="audio-status" class="status" role="status" aria-live="polite"></div>
+    <div id="audio-result"></div>
+  </section>
+  <section class="card">
+    <h2>5. Capturer les changements de scène</h2>
+    <p class="hint">Choisis la vidéo entière ou un extrait. Une image est créée lorsqu’un changement de scène est détecté.</p>
+    <form id="frames-form">
+      <label for="frames-source">Source</label>
+      <select id="frames-source" required><option value="">Sélectionne d’abord une vidéo</option></select>
+      <button id="frames-submit" class="primary" type="submit" disabled>Extraire les images</button>
+    </form>
+    <div id="frames-status" class="status" role="status" aria-live="polite"></div>
+    <button id="delete-frames" class="remove" type="button" disabled>Supprimer les captures sélectionnées</button>
+    <div id="frames-gallery" class="gallery"></div>
+  </section>
+</main>
+<script>
+  let videoId = null;
+  const uploadForm = document.querySelector('#upload-form');
+  const clipsForm = document.querySelector('#clips-form');
+  const intervals = document.querySelector('#intervals');
+  const uploadStatus = document.querySelector('#upload-status');
+  const clipsStatus = document.querySelector('#clips-status');
+  const createButton = document.querySelector('#create');
+  const result = document.querySelector('#result');
+  const select = document.querySelector('#video-select');
+  const preview = document.querySelector('#preview');
+  const deleteVideo = document.querySelector('#delete-video');
+  const clipsList = document.querySelector('#clips-list');
+  const libraryStatus = document.querySelector('#library-status');
+  const audioSource = document.querySelector('#audio-source');
+  const audioSubmit = document.querySelector('#audio-submit');
+  const audioStatus = document.querySelector('#audio-status');
+  const audioResult = document.querySelector('#audio-result');
+  const framesSource = document.querySelector('#frames-source');
+  const framesSubmit = document.querySelector('#frames-submit');
+  const framesStatus = document.querySelector('#frames-status');
+  const framesGallery = document.querySelector('#frames-gallery');
+  const deleteFrames = document.querySelector('#delete-frames');
+
+  async function loadFrames() {
+    const source = framesSource.value;
+    framesGallery.replaceChildren();
+    deleteFrames.disabled = true;
+    if (!source) { showStatus(framesStatus, ''); return; }
+    const data = await readResponse(await fetch(`/videos/${encodeURIComponent(source)}/frames`));
+    for (const batch of data.batches) {
+      for (const frame of batch.frames) {
+        const label = document.createElement('label'); label.className = 'frame-choice';
+        const link = document.createElement('a'); link.href = frame.url; link.target = '_blank'; link.rel = 'noopener';
+        const image = document.createElement('img'); image.src = frame.url; image.alt = frame.filename; image.loading = 'lazy';
+        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.value = frame.url;
+        checkbox.addEventListener('change', () => { deleteFrames.disabled = !framesGallery.querySelector('input:checked'); });
+        link.append(image); label.append(link, checkbox, document.createTextNode('Sélectionner')); framesGallery.append(label);
+      }
+    }
+    showStatus(framesStatus, `${framesGallery.children.length} image(s) enregistrée(s) pour cette source.`);
+  }
+  framesSource.addEventListener('change', () => loadFrames().catch(error => showStatus(framesStatus, error.message, true)));
+  deleteFrames.addEventListener('click', async () => {
+    const selected = [...framesGallery.querySelectorAll('input:checked')].map(input => input.value);
+    if (!selected.length || !confirm(`Supprimer ${selected.length} capture(s) sélectionnée(s) ?`)) return;
+    deleteFrames.disabled = true;
+    let failed = 0;
+    for (const url of selected) {
+      try { const response = await fetch(url, { method: 'DELETE' }); if (!response.ok) failed++; }
+      catch { failed++; }
+    }
+    try { await loadFrames(); showStatus(framesStatus, failed ? `${failed} capture(s) n’ont pas pu être supprimées.` : `${selected.length} capture(s) supprimée(s).`, failed > 0); }
+    catch (error) { showStatus(framesStatus, error.message, true); }
+  });
+
+  async function loadVideos(selected = videoId) {
+    const data = await readResponse(await fetch('/videos'));
+    select.replaceChildren(new Option('Choisir une vidéo', ''));
+    data.videos.forEach(video => select.add(new Option(video.filename, video.video_id)));
+    select.value = selected || '';
+    await selectVideo();
+    showStatus(libraryStatus, data.videos.length ? `${data.videos.length} vidéo(s) disponible(s).` : 'Aucune vidéo enregistrée.');
+  }
+  async function selectVideo() {
+    videoId = select.value || null;
+    createButton.disabled = !videoId;
+    preview.hidden = !videoId;
+    deleteVideo.hidden = !videoId;
+    result.hidden = true;
+    audioSource.replaceChildren(new Option('Sélectionne d’abord une vidéo', ''));
+    framesSource.replaceChildren(new Option('Sélectionne d’abord une vidéo', ''));
+    framesSubmit.disabled = !videoId;
+    framesGallery.replaceChildren();
+    showStatus(framesStatus, '');
+    audioSubmit.disabled = !videoId;
+    audioResult.replaceChildren();
+    showStatus(audioStatus, '');
+    if (!videoId) { preview.removeAttribute('src'); preview.load(); clipsList.textContent = 'Sélectionne une vidéo.'; return; }
+    preview.src = `/videos/${encodeURIComponent(videoId)}`;
+    await loadClips();
+  }
+  async function loadClips() {
+    const data = await readResponse(await fetch(`/videos/${encodeURIComponent(videoId)}/clips`));
+    const previousSource = audioSource.value;
+    const previousFramesSource = framesSource.value;
+    audioSource.replaceChildren(new Option('Vidéo originale', videoId));
+    framesSource.replaceChildren(new Option('Vidéo entière', videoId));
+    data.clips.forEach(clip => audioSource.add(new Option(`Extrait ${clip.start} → ${clip.end}`, clip.clip_id)));
+    data.clips.forEach(clip => framesSource.add(new Option(`Extrait ${clip.start} → ${clip.end}`, clip.clip_id)));
+    if ([...audioSource.options].some(option => option.value === previousSource)) audioSource.value = previousSource;
+    if ([...framesSource.options].some(option => option.value === previousFramesSource)) framesSource.value = previousFramesSource;
+    await loadFrames();
+    clipsList.replaceChildren();
+    if (!data.clips.length) { clipsList.textContent = 'Aucun extrait pour cette vidéo.'; return; }
+    for (const clip of data.clips) {
+      const item = document.createElement('div');
+      item.className = 'clip';
+      const text = document.createElement('div');
+      text.textContent = `${clip.start} → ${clip.end} · ${clip.filename}`;
+      const player = document.createElement('video');
+      player.controls = true;
+      player.src = `/files/${encodeURIComponent(clip.filename)}`;
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.className = 'remove'; remove.textContent = 'Supprimer cet extrait';
+      remove.addEventListener('click', async () => {
+        if (!confirm('Supprimer cet extrait ?')) return;
+        try {
+          const response = await fetch(`/videos/${encodeURIComponent(videoId)}/clips/${encodeURIComponent(clip.clip_id)}`, { method: 'DELETE' });
+          if (!response.ok) throw new Error('Suppression impossible.');
+          await loadClips();
+        } catch (error) { showStatus(libraryStatus, error.message, true); }
+      });
+      item.append(text, player, remove); clipsList.append(item);
+    }
+  }
+  select.addEventListener('change', () => selectVideo().catch(error => showStatus(libraryStatus, error.message, true)));
+  deleteVideo.addEventListener('click', async () => {
+    if (!videoId || !confirm('Supprimer cette vidéo et tous ses extraits ?')) return;
+    try {
+      const response = await fetch(`/videos/${encodeURIComponent(videoId)}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Suppression impossible.');
+      videoId = null;
+      await loadVideos(null);
+    } catch (error) { showStatus(libraryStatus, error.message, true); }
+  });
+
+  function addInterval() {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = '<label>Début<input name="start" placeholder="00:00" required></label><label>Fin<input name="end" placeholder="00:30" required></label><button class="remove" type="button">Supprimer</button>';
+    row.querySelector('button').addEventListener('click', () => {
+      if (intervals.children.length > 1) row.remove();
+    });
+    intervals.appendChild(row);
+  }
+  addInterval();
+  document.querySelector('#add').addEventListener('click', addInterval);
+
+  async function readResponse(response) {
+    const data = await response.json();
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Vérifie les informations saisies.');
+    return data;
+  }
+  function showStatus(element, message, isError = false) {
+    element.textContent = message;
+    element.classList.toggle('error', isError);
+  }
+  uploadForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = uploadForm.querySelector('button');
+    const data = new FormData();
+    data.append('file', document.querySelector('#video').files[0]);
+    button.disabled = true;
+    createButton.disabled = true;
+    videoId = null;
+    result.hidden = true;
+    showStatus(uploadStatus, 'Envoi en cours…');
+    try {
+      const uploaded = await readResponse(await fetch('/videos', { method: 'POST', body: data }));
+      videoId = uploaded.video_id;
+      await loadVideos(videoId);
+      showStatus(uploadStatus, `Vidéo enregistrée : ${uploaded.filename}`);
+      showStatus(clipsStatus, '');
+    } catch (error) { showStatus(uploadStatus, `Erreur : ${error.message}`, true); }
+    finally { button.disabled = false; createButton.disabled = !videoId; }
+  });
+  clipsForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!videoId) return;
+    const clips = [...intervals.children].map(row => ({ start: row.querySelector('[name=start]').value.trim(), end: row.querySelector('[name=end]').value.trim() }));
+    createButton.disabled = true;
+    result.hidden = true;
+    showStatus(clipsStatus, 'Création des extraits en cours…');
+    try {
+      const data = await readResponse(await fetch(`/videos/${encodeURIComponent(videoId)}/clips`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clips }) }));
+      showStatus(clipsStatus, `${data.total_clips} extrait(s) créé(s) dans storage/.`);
+      result.textContent = JSON.stringify(data, null, 2);
+      result.hidden = false;
+      await loadClips();
+    } catch (error) { showStatus(clipsStatus, `Erreur : ${error.message}`, true); }
+    finally { createButton.disabled = false; }
+  });
+  document.querySelector('#audio-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const source = audioSource.value;
+    if (!source) return;
+    audioSubmit.disabled = true;
+    audioResult.replaceChildren();
+    showStatus(audioStatus, 'Extraction en cours…');
+    try {
+      const data = await readResponse(await fetch(`/videos/${encodeURIComponent(source)}/audio`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format: document.querySelector('#audio-format').value })
+      }));
+      const player = document.createElement('audio'); player.controls = true; player.src = data.url;
+      const link = document.createElement('a'); link.href = data.url; link.download = data.filename; link.textContent = `Télécharger ${data.filename}`;
+      audioResult.append(player, document.createElement('br'), link);
+      showStatus(audioStatus, 'Audio enregistré dans storage/.');
+    } catch (error) { showStatus(audioStatus, `Erreur : ${error.message}`, true); }
+    finally { audioSubmit.disabled = !videoId; }
+  });
+  document.querySelector('#frames-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const source = framesSource.value;
+    if (!source) return;
+    framesSubmit.disabled = true;
+    showStatus(framesStatus, 'Analyse en cours…');
+    try {
+      const data = await readResponse(await fetch(`/videos/${encodeURIComponent(source)}/frames`, { method: 'POST' }));
+      if (framesSource.value === source) {
+        await loadFrames();
+        showStatus(framesStatus, data.total_frames ? `${data.total_frames} nouvelle(s) image(s) extraite(s).` : 'Aucun changement de scène détecté pour cette source.');
+      }
+    } catch (error) { showStatus(framesStatus, `Erreur : ${error.message}`, true); }
+    finally { framesSubmit.disabled = !videoId; }
+  });
+  loadVideos().catch(error => showStatus(libraryStatus, `Erreur : ${error.message}`, true));
+</script>
+</body>
+</html>
